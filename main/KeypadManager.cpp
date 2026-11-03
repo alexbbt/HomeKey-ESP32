@@ -1,5 +1,7 @@
 #include "KeypadManager.hpp"
 #include "GPIOAllocator.hpp"
+#include "app_events.hpp"
+#include "app_event_loop.hpp"
 #include "esp_log.h"
 
 // 5 rows x 3 columns with a dedicated doorbell row. '\0' marks unused keys.
@@ -159,6 +161,8 @@ void KeypadManager::handle_key_press(char key) {
 
     esp_timer_stop(entry_timer);
     esp_timer_start_once(entry_timer, CODE_ENTRY_TIMEOUT_US);
+    // Acknowledge any recognized press so the NeoPixel can dip briefly.
+    AppEventLoop::publish(KEYPAD_EVENT, KEYPAD_KEY_PRESSED, nullptr, 0);
 
     if (key == doorbell_key) {
         ESP_LOGI(TAG, "DB key pressed.");

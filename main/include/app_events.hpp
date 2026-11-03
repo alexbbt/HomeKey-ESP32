@@ -47,4 +47,5 @@ ESP_EVENT_DECLARE_BASE(KEYPAD_EVENT);
 enum {
     KEYPAD_CODE_ENTERED,
     KEYPAD_DOORBELL,
+    KEYPAD_KEY_PRESSED, // any recognized key; used for press acknowledgement feedback
 };

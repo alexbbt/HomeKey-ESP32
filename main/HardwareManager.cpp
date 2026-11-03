@@ -188,6 +188,12 @@ void HardwareManager::begin() {
     }
   });
 
+  m_keypress_event = AppEventLoop::subscribe(KEYPAD_EVENT, KEYPAD_KEY_PRESSED, [&](const uint8_t* data, size_t size){
+    (void)data;
+    (void)size;
+    showKeypressDip();
+  });
+
   m_nfc_event = AppEventLoop::subscribe(NFC_EVENT, NFC_TAP_EVENT, [&](const uint8_t* data, size_t size){
     if(size == 0 || data == nullptr) return;
     std::span<const uint8_t> payload(data, size);
@@ -272,6 +278,7 @@ void HardwareManager::begin() {
     m_pixelS_context = {this, TimerSources::PIXEL_S};
     m_pixelF_context = {this, TimerSources::PIXEL_F};
     m_pixelTagEvent_context = {this, TimerSources::PIXEL_TAG_EVENT};
+    m_pixelKeypress_context = {this, TimerSources::PIXEL_KEYPRESS};
     m_altAction_context = {this, TimerSources::ALT_GPIO};
     m_altActionInit_context = {this, TimerSources::ALT_GPIO_INIT};
 
@@ -323,6 +330,14 @@ void HardwareManager::begin() {
             .skip_unhandled_events = false
     };
 
+    const esp_timer_create_args_t pixelKeypress_timer_args = {
+            .callback = &handleTimer,
+            .arg = (void*) &m_pixelKeypress_context,
+            .dispatch_method = ESP_TIMER_TASK,
+            .name = "pixelKeypressTimer",
+            .skip_unhandled_events = false
+    };
+
     const esp_timer_create_args_t altAction_timer_args = {
             .callback = &handleTimer,
             .arg = (void*) &m_altAction_context,
@@ -353,6 +368,7 @@ void HardwareManager::begin() {
     create_timer(pixelS_timer_args, m_pixelSuccessTimer, "pixelSuccessTimer");
     create_timer(pixelF_timer_args, m_pixelFailTimer, "pixelFailTimer");
     create_timer(pixelTagEvent_timer_args, m_pixelTagEventTimer, "pixelTagEventTimer");
+    create_timer(pixelKeypress_timer_args, m_pixelKeypressTimer, "pixelKeypressTimer");
     create_timer(altAction_timer_args, m_altActionTimer, "altActionTimer");
     create_timer(altActionInit_timer_args, m_altActionInitTimer, "altActionInitTimer");
 
@@ -432,6 +448,7 @@ void HardwareManager::handleTimer(void* arg){
     case TimerSources::PIXEL_S:
     case TimerSources::PIXEL_F:
     case TimerSources::PIXEL_TAG_EVENT:
+    case TimerSources::PIXEL_KEYPRESS:
       i->setIdlePixel();
       ESP_LOGD(TAG, "PIXEL");
       break;
@@ -617,6 +634,36 @@ void HardwareManager::setIdlePixel() {
     m_pixel->set(m_pixel->RGB(r, g, b));
 }
 
+bool HardwareManager::authPixelFeedbackActive() const {
+    return (m_pixelSuccessTimer && esp_timer_is_active(m_pixelSuccessTimer)) ||
+           (m_pixelFailTimer && esp_timer_is_active(m_pixelFailTimer)) ||
+           (m_pixelTagEventTimer && esp_timer_is_active(m_pixelTagEventTimer));
+}
+
+void HardwareManager::showKeypressDip() {
+    if (m_pixel == nullptr || authPixelFeedbackActive()) {
+        return;
+    }
+    auto color = m_miscConfig.neopixelIdleColor;
+    const uint8_t r = color[espConfig::actions_config_t::colorMap::R];
+    const uint8_t g = color[espConfig::actions_config_t::colorMap::G];
+    const uint8_t b = color[espConfig::actions_config_t::colorMap::B];
+    if (r == 0 && g == 0 && b == 0) {
+        return;
+    }
+    constexpr uint8_t pct = NEOPIXEL_KEYPRESS_DIP_PERCENT;
+    m_pixel->set(m_pixel->RGB(
+        static_cast<uint8_t>((r * pct) / 100),
+        static_cast<uint8_t>((g * pct) / 100),
+        static_cast<uint8_t>((b * pct) / 100)));
+    if (m_pixelKeypressTimer) {
+        if (esp_timer_is_active(m_pixelKeypressTimer)) {
+            esp_timer_stop(m_pixelKeypressTimer);
+        }
+        esp_timer_start_once(m_pixelKeypressTimer, NEOPIXEL_KEYPRESS_DIP_MS * 1000);
+    }
+}
+
 /**
  * @brief Executes a feedback sequence for the given event type.
  *
@@ -630,6 +677,7 @@ void HardwareManager::runFeedbackSequence(HwEventType feedback) {
             ESP_LOGD(TAG, "Executing SUCCESS feedback sequence.");
             if(m_gpioSuccessTimer && esp_timer_is_active(m_gpioSuccessTimer)) esp_timer_stop(m_gpioSuccessTimer);
             if(m_pixelSuccessTimer && esp_timer_is_active(m_pixelSuccessTimer)) esp_timer_stop(m_pixelSuccessTimer);
+            if(m_pixelKeypressTimer && esp_timer_is_active(m_pixelKeypressTimer)) esp_timer_stop(m_pixelKeypressTimer);
             if (m_pixel != nullptr) {
                 auto color = m_miscConfig.neopixelSuccessColor;
                 m_pixel->set(m_pixel->RGB(color[espConfig::actions_config_t::colorMap::R], color[espConfig::actions_config_t::colorMap::G], color[espConfig::actions_config_t::colorMap::B]));
@@ -653,6 +701,7 @@ void HardwareManager::runFeedbackSequence(HwEventType feedback) {
             ESP_LOGD(TAG, "Executing FAILURE feedback sequence.");
             if(m_gpioFailTimer && esp_timer_is_active(m_gpioFailTimer)) esp_timer_stop(m_gpioFailTimer);
             if(m_pixelFailTimer && esp_timer_is_active(m_pixelFailTimer)) esp_timer_stop(m_pixelFailTimer);
+            if(m_pixelKeypressTimer && esp_timer_is_active(m_pixelKeypressTimer)) esp_timer_stop(m_pixelKeypressTimer);
             if (m_pixel != nullptr) {
                 auto color = m_miscConfig.neopixelFailureColor;
                 m_pixel->set(m_pixel->RGB(color[espConfig::actions_config_t::colorMap::R], color[espConfig::actions_config_t::colorMap::G], color[espConfig::actions_config_t::colorMap::B]));

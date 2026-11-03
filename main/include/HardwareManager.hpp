@@ -86,6 +86,7 @@ private:
       PIXEL_S,
       PIXEL_F,
       PIXEL_TAG_EVENT,
+      PIXEL_KEYPRESS,
       ALT_GPIO,
       ALT_GPIO_INIT
     };
@@ -101,6 +102,8 @@ private:
     void runFeedbackSequence(HwEventType type);
     void applyLockState(int state);
     void setIdlePixel();
+    void showKeypressDip();
+    bool authPixelFeedbackActive() const;
 
     static void initiator_task_entry(void* arg);
     void initiator_task();
@@ -119,6 +122,7 @@ private:
     esp_timer_handle_t m_pixelSuccessTimer;
     esp_timer_handle_t m_pixelFailTimer;
     esp_timer_handle_t m_pixelTagEventTimer;
+    esp_timer_handle_t m_pixelKeypressTimer = nullptr;
     esp_timer_handle_t m_altActionTimer;
     esp_timer_handle_t m_altActionInitTimer;
 
@@ -137,6 +141,7 @@ private:
     TimerContext m_pixelS_context;
     TimerContext m_pixelF_context;
     TimerContext m_pixelTagEvent_context;
+    TimerContext m_pixelKeypress_context;
     TimerContext m_altAction_context;
     TimerContext m_altActionInit_context;
 
@@ -145,6 +150,7 @@ private:
     AppEventLoop::SubscriptionHandle m_hardware_action_event;
     AppEventLoop::SubscriptionHandle m_nfc_event;
     AppEventLoop::SubscriptionHandle m_auth_feedback_event;
+    AppEventLoop::SubscriptionHandle m_keypress_event;
     AppEventLoop::SubscriptionHandle m_gpio_pin_event;
 
     enum PinFunctions {
