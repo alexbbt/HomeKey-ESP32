@@ -249,7 +249,7 @@ void HardwareManager::begin() {
             pixelTypeIndex = 5; // GRB
         }
         m_pixel = new Pixel(m_miscConfig.nfcNeopixelPin, pixelTypeMap[pixelTypeIndex]);
-        m_pixel->off(); // Ensure pixel is off at startup
+        setIdlePixel(); // Solid idle / online indicator
         ESP_LOGI(TAG, "NeoPixel initialized on pin %d with type %s.", m_miscConfig.nfcNeopixelPin, pixelTypeMap[pixelTypeIndex]);
     } else {
         ESP_LOGI(TAG, "NeoPixel disabled, no pin configured.");
@@ -422,7 +422,7 @@ void HardwareManager::handleTimer(void* arg){
     case TimerSources::PIXEL_S:
     case TimerSources::PIXEL_F:
     case TimerSources::PIXEL_TAG_EVENT:
-      i->m_pixel->off();
+      i->setIdlePixel();
       ESP_LOGD(TAG, "PIXEL");
       break;
     case TimerSources::ALT_GPIO:
@@ -589,6 +589,22 @@ void HardwareManager::hwEventTask() {
             }
         }
     }
+}
+
+void HardwareManager::setIdlePixel() {
+    if (m_pixel == nullptr) {
+        return;
+    }
+    auto color = m_miscConfig.neopixelIdleColor;
+    // All-zero idle means "off" so existing installs without the new field stay dark.
+    const uint8_t r = color[espConfig::actions_config_t::colorMap::R];
+    const uint8_t g = color[espConfig::actions_config_t::colorMap::G];
+    const uint8_t b = color[espConfig::actions_config_t::colorMap::B];
+    if (r == 0 && g == 0 && b == 0) {
+        m_pixel->off();
+        return;
+    }
+    m_pixel->set(m_pixel->RGB(r, g, b));
 }
 
 /**

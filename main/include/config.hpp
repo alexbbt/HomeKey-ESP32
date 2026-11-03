@@ -233,6 +233,7 @@ namespace espConfig
     std::map<colorMap, uint8_t> neopixelSuccessColor = { {R, NEOPIXEL_SUCCESS_R}, {G, NEOPIXEL_SUCCESS_G}, {B, NEOPIXEL_SUCCESS_B} };
     std::map<colorMap, uint8_t> neopixelFailureColor = { {R, NEOPIXEL_FAIL_R}, {G, NEOPIXEL_FAIL_G}, {B, NEOPIXEL_FAIL_B} };
     std::map<colorMap, uint8_t> neopixelTagEventColor = { {R, NEOPIXEL_TAG_EVENT_R}, {G, NEOPIXEL_TAG_EVENT_G}, {B, NEOPIXEL_TAG_EVENT_B} };
+    std::map<colorMap, uint8_t> neopixelIdleColor = { {R, NEOPIXEL_IDLE_R}, {G, NEOPIXEL_IDLE_G}, {B, NEOPIXEL_IDLE_B} };
     uint16_t neopixelTagEventTime = NEOPIXEL_TAG_EVENT_TIME;
     uint16_t neopixelSuccessTime = NEOPIXEL_SUCCESS_TIME;
     uint16_t neopixelFailTime = NEOPIXEL_FAIL_TIME;

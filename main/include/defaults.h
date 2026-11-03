@@ -106,6 +106,9 @@
 #define NEOPIXEL_TAG_EVENT_TIME 1000 // GPIO Delay time in ms - Tag Event
 #define NEOPIXEL_SUCCESS_TIME 1000 // GPIO Delay time in ms - Success HK Auth
 #define NEOPIXEL_FAIL_TIME 1000 // GPIO Delay time in ms - Success HK Auth
+#define NEOPIXEL_IDLE_R 0 // Color value for Red - Idle / online indicator
+#define NEOPIXEL_IDLE_G 0 // Color value for Green - Idle / online indicator
+#define NEOPIXEL_IDLE_B 255 // Color value for Blue - Idle / online indicator
 #define NFC_SUCCESS_PIN 255 // GPIO Pin pulled HIGH or LOW (see NFC_SUCCESS_HL) on success HK Auth
 #define NFC_SUCCESS_HL 1 // Flag to define if NFC_SUCCESS_PIN should be held High or Low
 #define NFC_SUCCESS_TIME 1000 // How long should NFC_SUCCESS_PIN be held High or Low

@@ -11,7 +11,15 @@
   let activeTab = $state<'nfc' | 'state'>('nfc');
 
   // svelte-ignore state_referenced_locally
-  let actionsConfig = $state<ActionsConfig>($state.snapshot(actions));
+  let actionsConfig = $state<ActionsConfig>({
+    ...$state.snapshot(actions),
+    // Older firmware may omit idle color; default to solid blue online indicator.
+    neopixelIdleColor: actions?.neopixelIdleColor ?? [
+      [0, 0],
+      [1, 0],
+      [2, 255],
+    ],
+  });
 
   const saveActionsConfig = async (e: any): Promise<void> => {
     try {
@@ -163,6 +171,67 @@
                       </select>
                     </div>
                   </div>
+
+                  <fieldset class="fieldset border-base-300 rounded-box border p-4 mb-6">
+                    <legend class="fieldset-legend flex items-center gap-2">
+                      Idle / Online
+                      <div
+                        class="w-4 h-4 rounded border border-base-300"
+                        style="background-color: rgb({actionsConfig.neopixelIdleColor?.[0]?.[1] ?? 0}, {actionsConfig.neopixelIdleColor?.[1]?.[1] ?? 0}, {actionsConfig.neopixelIdleColor?.[2]?.[1] ?? 0});"
+                      ></div>
+                    </legend>
+                    <p class="text-xs text-base-content/60 mb-3">Solid color while the device is idle. Feedback colors temporarily override this.</p>
+                    <div class="form-control">
+                      <!-- svelte-ignore a11y_label_has_associated_control -->
+                      <label class="label">
+                        <span class="label-text text-sm">Color</span>
+                      </label>
+                      <div class="flex gap-2">
+                        <div class="form-control flex-1">
+                          <!-- svelte-ignore a11y_label_has_associated_control -->
+                          <label class="label">
+                            <span class="label-text text-sm flex items-center gap-1 text-xs">R</span>
+                          </label>
+                          <input
+                            type="number"
+                            bind:value={actionsConfig.neopixelIdleColor[0][1]}
+                            placeholder="0"
+                            min="0"
+                            max="255"
+                            class="input input-bordered w-full"
+                          />
+                        </div>
+                        <div class="form-control flex-1">
+                          <!-- svelte-ignore a11y_label_has_associated_control -->
+                          <label class="label">
+                            <span class="label-text text-sm flex items-center gap-1 text-xs">G</span>
+                          </label>
+                          <input
+                            type="number"
+                            bind:value={actionsConfig.neopixelIdleColor[1][1]}
+                            placeholder="0"
+                            min="0"
+                            max="255"
+                            class="input input-bordered w-full"
+                          />
+                        </div>
+                        <div class="form-control flex-1">
+                          <!-- svelte-ignore a11y_label_has_associated_control -->
+                          <label class="label">
+                            <span class="label-text text-sm flex items-center gap-1 text-xs">B</span>
+                          </label>
+                          <input
+                            type="number"
+                            bind:value={actionsConfig.neopixelIdleColor[2][1]}
+                            placeholder="255"
+                            min="0"
+                            max="255"
+                            class="input input-bordered w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </fieldset>
 
                   <div class="flex max-md:flex-col max-md:gap-8 gap-4">
                     <!-- Auth Success Group -->

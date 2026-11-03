@@ -100,6 +100,7 @@ private:
     void hwEventTask();
     void runFeedbackSequence(HwEventType type);
     void applyLockState(int state);
+    void setIdlePixel();
 
     static void initiator_task_entry(void* arg);
     void initiator_task();

@@ -129,6 +129,14 @@ inline std::optional<std::string> check_pin_reassignment(uint8_t incoming_pin,
       consumer = GPIOAllocator::PinConsumer::Hardware;
       role = GPIOAllocator::PinRole::Irq;
       output_capable = false;
+    } else if (key == "keypadRowPins") {
+      // Rows are scanned as outputs.
+      role = GPIOAllocator::PinRole::GpioOut;
+      output_capable = true;
+    } else if (key == "keypadColumnPins") {
+      // Columns are inputs — ESP32 pins 34–39 are valid here.
+      role = GPIOAllocator::PinRole::GpioIn;
+      output_capable = false;
     }
 
     auto status = GPIOAllocator::instance().status_of(incoming_pin);

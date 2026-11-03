@@ -230,6 +230,8 @@ export interface ActionsConfig {
   neopixelTagEventTime: number;
   /** RGB color values for tag event LED animation */
   neopixelTagEventColor: [number, number][];
+  /** RGB color values for idle / online indicator */
+  neopixelIdleColor: [number, number][];
   /** GPIO pin for NFC success indicator */
   nfcSuccessPin: number;
   /** Duration in milliseconds for NFC success signal */
