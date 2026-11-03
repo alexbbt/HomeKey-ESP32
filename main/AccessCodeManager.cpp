@@ -154,7 +154,8 @@ bool AccessCodeManager::validateCode(const std::string& code) const {
         return true;
     }
 
-    ESP_LOGW(TAG, "Code is invalid.");
+    ESP_LOGW(TAG, "Code is invalid. (%u codes stored; add guest codes in Apple Home for this lock)",
+             static_cast<unsigned>(access_codes.size()));
     return false;
 }
 

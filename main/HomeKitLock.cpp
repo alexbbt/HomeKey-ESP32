@@ -101,7 +101,10 @@ void HomeKitLock::initKeypad() {
         std::error_code ec;
         EventKeypadCode s = alpaca::deserialize<EventKeypadCode>(payload, ec);
         if(ec) { ESP_LOGE(TAG, "Failed to deserialize keypad event: %s", ec.message().c_str()); return; }
-        if (m_accessCodeManager->validateCode(s.code)) {
+        const bool accepted = m_accessCodeManager->validateCode(s.code);
+        const uint8_t feedback = accepted ? 1 : 0;
+        AppEventLoop::publish(HW_EVENT, HW_AUTH_FEEDBACK, &feedback, 1);
+        if (accepted) {
             ESP_LOGI(TAG, "Access code accepted, unlocking.");
             EventLockState ls{
               .currentState = static_cast<uint8_t>(m_lockManager.getTargetState()),

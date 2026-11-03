@@ -178,6 +178,16 @@ HardwareManager::HardwareManager(const espConfig::actions_config_t& miscConfig)
  * This prepares the HardwareManager to receive events and perform timed feedback and lock control.
  */
 void HardwareManager::begin() {
+  m_auth_feedback_event = AppEventLoop::subscribe(HW_EVENT, HW_AUTH_FEEDBACK, [&](const uint8_t* data, size_t size){
+    if (size < 1 || data == nullptr) return;
+    if (data[0]) {
+      showSuccessFeedback();
+      triggerAltAction();
+    } else {
+      showFailureFeedback();
+    }
+  });
+
   m_nfc_event = AppEventLoop::subscribe(NFC_EVENT, NFC_TAP_EVENT, [&](const uint8_t* data, size_t size){
     if(size == 0 || data == nullptr) return;
     std::span<const uint8_t> payload(data, size);

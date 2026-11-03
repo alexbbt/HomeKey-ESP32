@@ -144,6 +144,7 @@ private:
 
     AppEventLoop::SubscriptionHandle m_hardware_action_event;
     AppEventLoop::SubscriptionHandle m_nfc_event;
+    AppEventLoop::SubscriptionHandle m_auth_feedback_event;
     AppEventLoop::SubscriptionHandle m_gpio_pin_event;
 
     enum PinFunctions {

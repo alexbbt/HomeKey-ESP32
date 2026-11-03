@@ -25,6 +25,7 @@ enum {
     HW_ACTION,
     HW_ALT_ACTION,
     HW_CONFIG_CHANGED,
+    HW_AUTH_FEEDBACK, // payload: one uint8_t, 1 = success, 0 = failure
 };
 
 ESP_EVENT_DECLARE_BASE(MQTT_EVENT);
