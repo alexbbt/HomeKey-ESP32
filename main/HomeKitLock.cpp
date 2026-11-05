@@ -101,11 +101,16 @@ void HomeKitLock::initKeypad() {
         std::error_code ec;
         EventKeypadCode s = alpaca::deserialize<EventKeypadCode>(payload, ec);
         if(ec) { ESP_LOGE(TAG, "Failed to deserialize keypad event: %s", ec.message().c_str()); return; }
-        const bool accepted = m_accessCodeManager->validateCode(s.code);
+        uint16_t accessCodeId = 0;
+        const bool accepted = m_accessCodeManager->findCodeId(s.code, accessCodeId);
         const uint8_t feedback = accepted ? 1 : 0;
         AppEventLoop::publish(HW_EVENT, HW_AUTH_FEEDBACK, &feedback, 1);
         if (accepted) {
-            ESP_LOGI(TAG, "Access code accepted, unlocking.");
+            ESP_LOGI(TAG, "Access code accepted (id=%u), unlocking.", static_cast<unsigned>(accessCodeId));
+            EventKeypadAuth auth{.accessCodeId = accessCodeId};
+            std::vector<uint8_t> authPayload;
+            alpaca::serialize(auth, authPayload);
+            AppEventLoop::publish(KEYPAD_EVENT, KEYPAD_AUTH_SUCCESS, authPayload.data(), authPayload.size());
             EventLockState ls{
               .currentState = static_cast<uint8_t>(m_lockManager.getTargetState()),
               .targetState = static_cast<uint8_t>(LockManager::lockStates::UNLOCKED),
@@ -114,6 +119,8 @@ void HomeKitLock::initKeypad() {
             std::vector<uint8_t> d;
             alpaca::serialize(ls, d);
             AppEventLoop::publish(LOCK_EVENT, LOCK_TARGET_STATE_CHANGED, d.data(), d.size());
+        } else {
+            (void)m_accessCodeManager->validateCode(s.code); // logs invalid + stored count
         }
     });
     m_keypad->registerCodeEnteredCallback([](const std::string& code){

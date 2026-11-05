@@ -3,6 +3,7 @@
 #include "MqttManager.hpp"
 #include "LockManager.hpp"
 #include "ConfigManager.hpp"
+#include "IdentityNamesManager.hpp"
 #include "JsonGuard.hpp"
 #include <cstdlib>
 #include <esp_log.h>
@@ -23,9 +24,10 @@ const char* MqttManager::TAG = "MqttManager";
  *
  * @param configManager Source of runtime configuration values used to initialize the MQTT manager.
  */
-MqttManager::MqttManager(const ConfigManager& configManager)
+MqttManager::MqttManager(const ConfigManager& configManager, IdentityNamesManager& identityNames)
     : m_mqttConfig(configManager.getConfig<espConfig::mqttConfig_t>()),
       m_mqttSslConfig(configManager.getMqttSslConfig()),
+      m_identityNames(identityNames),
       m_client(nullptr),
       device_name(configManager.getConfig<espConfig::misc_config_t>().deviceName),
       m_sslConfigured(false)
@@ -101,7 +103,7 @@ bool MqttManager::begin(std::string deviceID) {
           EventHKTap s = alpaca::deserialize<EventHKTap>(nfc_event.data, ec);
           if(!ec){
             if(s.status){
-              publishHomeKeyTap(s.issuerId, s.endpointId, s.readerId);
+              publishHomeKeyTap(s.issuerId, s.readerId);
             }
           } else {
             ESP_LOGE(TAG, "Failed to deserialize HomeKey event: %s", ec.message().c_str());
@@ -122,6 +124,14 @@ bool MqttManager::begin(std::string deviceID) {
         default:
           break;
       }
+    });
+    m_keypad_auth = AppEventLoop::subscribe(KEYPAD_EVENT, KEYPAD_AUTH_SUCCESS, [&](const uint8_t* data, size_t size){
+      if(size == 0 || data == nullptr) return;
+      std::span<const uint8_t> payload(data, size);
+      std::error_code ec;
+      EventKeypadAuth s = alpaca::deserialize<EventKeypadAuth>(payload, ec);
+      if(ec) { ESP_LOGE(TAG, "Failed to deserialize keypad auth event: %s", ec.message().c_str()); return; }
+      publishKeypadAuth(s.accessCodeId);
     });
     this->deviceID = deviceID;
 
@@ -471,20 +481,35 @@ void MqttManager::publishLockState(const int currentState, const int targetState
 /**
  * @brief Publish a Home Key Tap event to the configured Home Key MQTT topic.
  *
- * Constructs a JSON payload containing hex-encoded identifiers and a "homekey" flag, then publishes it to the configured Home Key topic.
- *
- * @param issuerId Byte sequence of the issuer identifier; encoded as an uppercase hex string in the `issuerId` JSON field.
- * @param endpointId Byte sequence of the endpoint identifier; encoded as an uppercase hex string in the `endpointId` JSON field.
- * @param readerId Byte sequence of the reader identifier; encoded as an uppercase hex string in the `readerId` JSON field.
+ * Person identity is `issuerId` only (endpoint / device id is omitted).
  */
-void MqttManager::publishHomeKeyTap(const std::vector<uint8_t>& issuerId, const std::vector<uint8_t>& endpointId, const std::vector<uint8_t>& readerId) {
-    std::string payload = JsonBuilder::object()
-        .addString("issuerId", fmt::format("{:02X}", fmt::join(issuerId, "")))
-        .addString("endpointId", fmt::format("{:02X}", fmt::join(endpointId, "")))
+void MqttManager::publishHomeKeyTap(const std::vector<uint8_t>& issuerId, const std::vector<uint8_t>& readerId) {
+    const std::string issuerHex = fmt::format("{:02X}", fmt::join(issuerId, ""));
+    JsonBuilder obj = JsonBuilder::object();
+    obj.addString("method", "homekey")
+        .addString("issuerId", issuerHex)
         .addString("readerId", fmt::format("{:02X}", fmt::join(readerId, "")))
-        .addBool("homekey", true)
-        .toStringUnformatted();
-    publish(m_mqttConfig.hkTopic, payload);
+        .addBool("homekey", true);
+    const std::string operatorName = m_identityNames.issuerName(issuerHex);
+    if (!operatorName.empty()) {
+        obj.addString("operator", operatorName);
+    }
+    publish(m_mqttConfig.hkTopic, obj.toStringUnformatted());
+}
+
+/**
+ * @brief Publish a keypad access-code auth event to the Home Key MQTT topic.
+ */
+void MqttManager::publishKeypadAuth(uint16_t accessCodeId) {
+    JsonBuilder obj = JsonBuilder::object();
+    obj.addString("method", "keypad")
+        .addNumber("accessCodeId", static_cast<double>(accessCodeId))
+        .addBool("homekey", false);
+    const std::string operatorName = m_identityNames.codeName(accessCodeId);
+    if (!operatorName.empty()) {
+        obj.addString("operator", operatorName);
+    }
+    publish(m_mqttConfig.hkTopic, obj.toStringUnformatted());
 }
 
 /**
@@ -586,17 +611,14 @@ void MqttManager::publishHassDiscovery() {
         p.addString("availability_topic", m_mqttConfig.lwtTopic.c_str());
     });
 
-    // Publish HomeKey Issuer config
+    // Publish HomeKey Issuer config (person)
     publishConfig("HomeKey Issuer", "tag/" + m_mqttConfig.mqttClientId + "/hk_issuer/config", [&](JsonBuilder& p) {
         p.addString("topic", m_mqttConfig.hkTopic.c_str());
         p.addString("value_template", "{{ value_json.issuerId }}");
     });
 
-    // Publish HomeKey Endpoint config
-    publishConfig("HomeKey Endpoint", "tag/" + m_mqttConfig.mqttClientId + "/hk_endpoint/config", [&](JsonBuilder& p) {
-        p.addString("topic", m_mqttConfig.hkTopic.c_str());
-        p.addString("value_template", "{{ value_json.endpointId }}");
-    });
+    // Clear legacy HomeKey Endpoint discovery (endpoint id no longer published)
+    publish("homeassistant/tag/" + m_mqttConfig.mqttClientId + "/hk_endpoint/config", "", 1, true);
 
     // Publish NFC Tag config (conditional)
     if (!m_mqttConfig.nfcTagNoPublish) {

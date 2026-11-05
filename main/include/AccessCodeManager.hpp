@@ -61,6 +61,19 @@ public:
     bool validateCode(const std::string& code) const;
 
     /**
+     * @brief Looks up the HAP access-code identifier for a stored code.
+     * @param code The code digits to look up.
+     * @param id Output identifier when found.
+     * @return true if the code is stored, false otherwise.
+     */
+    bool findCodeId(const std::string& code, uint16_t& id) const;
+
+    /**
+     * @brief Return stored access-code identifiers only (never PIN digits).
+     */
+    std::vector<uint16_t> listCodeIds() const;
+
+    /**
      * @brief Deletes all stored access codes and erases them from NVS.
      */
     void purge_codes();

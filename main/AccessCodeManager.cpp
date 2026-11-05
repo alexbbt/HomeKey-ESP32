@@ -146,17 +146,35 @@ void AccessCodeManager::purge_codes() {
 }
 
 bool AccessCodeManager::validateCode(const std::string& code) const {
-    auto it = std::find_if(access_codes.begin(), access_codes.end(),
-        [&code](const AccessCode& ac){ return ac.code == code; });
-
-    if (it != access_codes.end()) {
-        ESP_LOGI(TAG, "Code is valid!");
+    uint16_t id = 0;
+    if (findCodeId(code, id)) {
+        ESP_LOGI(TAG, "Code is valid! (id=%u)", static_cast<unsigned>(id));
         return true;
     }
 
     ESP_LOGW(TAG, "Code is invalid. (%u codes stored; add guest codes in Apple Home for this lock)",
              static_cast<unsigned>(access_codes.size()));
     return false;
+}
+
+bool AccessCodeManager::findCodeId(const std::string& code, uint16_t& id) const {
+    auto it = std::find_if(access_codes.begin(), access_codes.end(),
+        [&code](const AccessCode& ac){ return ac.code == code; });
+    if (it == access_codes.end()) {
+        return false;
+    }
+    id = it->id;
+    return true;
+}
+
+std::vector<uint16_t> AccessCodeManager::listCodeIds() const {
+    std::vector<uint16_t> ids;
+    ids.reserve(access_codes.size());
+    for (const auto& code : access_codes) {
+        ids.push_back(code.id);
+    }
+    std::sort(ids.begin(), ids.end());
+    return ids;
 }
 
 std::vector<uint8_t> AccessCodeManager::handle_write(TLV8& request_tlv) {

@@ -1,4 +1,4 @@
-import { type CertificatesStatus, type CertificateType, type MqttConfig, type MiscConfig, type ApiResponse, type ActionsConfig, type ApiError, type ApiSuccess, type CaptivePortalConfig, type WiFiNetwork, CertTypeString } from '../types/api';
+import { type CertificatesStatus, type CertificateType, type MqttConfig, type MiscConfig, type ApiResponse, type ActionsConfig, type ApiError, type ApiSuccess, type CaptivePortalConfig, type WiFiNetwork, type IdentityNames, CertTypeString } from '../types/api';
 import { notifications } from '../stores/notifications.svelte.js';
 
 export async function rebootDevice() {
@@ -68,6 +68,47 @@ export async function startConfigAP() {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error occurred';
     notifications.addError(`Failed to send request: ${message}`);
+  }
+}
+
+export async function fetchIdentityNames(): Promise<ApiResponse<IdentityNames>> {
+  try {
+    const response = await fetch('/identity_names');
+    if (!response.ok) {
+      const errorData: ApiError = await response.json();
+      notifications.addError(`Failed to load identity names: ${errorData.error}`);
+      return errorData;
+    }
+    return (await response.json()) as ApiSuccess;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    notifications.addError(`Failed to load identity names: ${message}`);
+    return { success: false, error: message };
+  }
+}
+
+export async function saveIdentityNames(data: {
+  issuers: Record<string, string>;
+  codes: Record<string, string>;
+}): Promise<ApiResponse<IdentityNames>> {
+  try {
+    const response = await fetch('/identity_names', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData: ApiError = await response.json();
+      notifications.addError(`Failed to save identity names: ${errorData.error}`);
+      return errorData;
+    }
+    const result = (await response.json()) as ApiSuccess;
+    notifications.addSuccess(result.message || 'Identity names saved');
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    notifications.addError(`Failed to save identity names: ${message}`);
+    return { success: false, error: message };
   }
 }
 

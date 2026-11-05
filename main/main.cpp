@@ -14,6 +14,7 @@
 #include "MqttManager.hpp"
 #include "automation/AutomationEngine.hpp"
 #include "WebServerManager.hpp"
+#include "IdentityNamesManager.hpp"
 #include <functional>
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_box.h>
@@ -27,6 +28,7 @@
 std::unique_ptr<LockManager> lockManager;
 NvsCredentialStore readerDataManager;
 ConfigManager configManager;
+IdentityNamesManager identityNamesManager;
 std::unique_ptr<HardwareManager> hardwareManager;
 std::unique_ptr<MqttManager> mqttManager;
 std::unique_ptr<automation::AutomationEngine> automationEngine;
@@ -175,9 +177,10 @@ void setup() {
   }
 
   configManager.begin();
+  identityNamesManager.begin();
   hardwareManager = std::make_unique<HardwareManager>(configManager.getConfig<espConfig::actions_config_t>());
   lockManager = std::make_unique<LockManager>(configManager.getConfig<espConfig::misc_config_t>(), configManager.getConfig<espConfig::actions_config_t>());
-  mqttManager = std::make_unique<MqttManager>(configManager);
+  mqttManager = std::make_unique<MqttManager>(configManager, identityNamesManager);
   automationEngine = std::make_unique<automation::AutomationEngine>(
       configManager, mqttManager.get(), lockManager.get());
   automationEngine->begin();
@@ -220,6 +223,8 @@ void setup() {
 
   webServerManager.setNfcManager(nfcManager.get());
   webServerManager.setMqttManager(mqttManager.get());
+  webServerManager.setIdentityNamesManager(&identityNamesManager);
+  webServerManager.setHomeKitLock(homekitLock.get());
   hardwareManager->begin();
   homekitLock->begin();
   lockManager->begin();

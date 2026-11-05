@@ -91,3 +91,7 @@ struct EventNfcStatus {
 struct EventKeypadCode {
     std::string code;
 };
+
+struct EventKeypadAuth {
+    uint16_t accessCodeId;
+};

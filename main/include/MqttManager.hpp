@@ -7,6 +7,7 @@
 
 class LockManager;
 class ConfigManager;
+class IdentityNamesManager;
 namespace espConfig { struct mqttConfig_t; struct mqtt_ssl_t;}
 
 /**
@@ -24,7 +25,7 @@ public:
      * @param lockManager Reference to the core lock logic manager.
      * @param configManager Reference to the application configuration manager.
      */
-     MqttManager(const ConfigManager& configManager);
+     MqttManager(const ConfigManager& configManager, IdentityNamesManager& identityNames);
 
      /**
       * @brief Destroys the MqttManager and cleans up resources.
@@ -79,12 +80,17 @@ private:
     void publishLockState(const int currentState, const int targetState);
 
     /**
-      * @brief Publishes a successful HomeKey authentication event.
-      * @param issuerId The ID of the authenticated issuer.
-      * @param endpointId The ID of the authenticated endpoint.
+      * @brief Publishes a successful HomeKey authentication event (person = issuerId).
+      * @param issuerId The ID of the authenticated issuer (Apple ID / person).
       * @param readerId The ID of this reader device.
       */
-    void publishHomeKeyTap(const std::vector<uint8_t>& issuerId, const std::vector<uint8_t>& endpointId, const std::vector<uint8_t>& readerId);
+    void publishHomeKeyTap(const std::vector<uint8_t>& issuerId, const std::vector<uint8_t>& readerId);
+
+    /**
+      * @brief Publishes a successful keypad access-code authentication event.
+      * @param accessCodeId HAP access-code identifier for the matched code.
+      */
+    void publishKeypadAuth(uint16_t accessCodeId);
 
     /**
       * @brief Publishes a generic (non-HomeKey) NFC tag scan event.
@@ -112,6 +118,7 @@ private:
     std::string deviceID;
     const espConfig::mqttConfig_t& m_mqttConfig;
     const espConfig::mqtt_ssl_t& m_mqttSslConfig;
+    IdentityNamesManager& m_identityNames;
     esp_mqtt_client_handle_t m_client;
     const std::string &device_name;
     bool m_isConnected = false;
@@ -123,6 +130,7 @@ private:
     AppEventLoop::SubscriptionHandle m_lock_state_changed;
     AppEventLoop::SubscriptionHandle m_alt_action;
     AppEventLoop::SubscriptionHandle m_nfc_event;
+    AppEventLoop::SubscriptionHandle m_keypad_auth;
 
     // Status tracking (replaces event-based status publishing)
     MqttErrorCode m_lastErrorCode = MqttErrorCode::NONE;

@@ -41,6 +41,9 @@ public:
     void updateLockState(int currentState, int targetState);
     void updateBatteryStatus(uint8_t batteryLevel, bool isLow);
 
+    /** Access codes for web UI listing (ids only). May be null if keypad disabled. */
+    AccessCodeManager* accessCodeManager() const { return m_accessCodeManager.get(); }
+
 private:
     SpanCharacteristic* m_lockCurrentState;
     SpanCharacteristic* m_lockTargetState;

@@ -17,6 +17,9 @@
 #include "MqttManager.hpp"
 #include "NfcManager.hpp"
 #include "ReaderDataManager.hpp"
+#include "IdentityNamesManager.hpp"
+#include "HomeKitLock.hpp"
+#include "AccessCodeManager.hpp"
 #include "cJSON.h"
 #include "config.hpp"
 #include "esp_chip_info.h"
@@ -169,7 +172,8 @@ inline std::optional<std::string> check_pin_reassignment(uint8_t incoming_pin,
 WebServerManager::WebServerManager(ConfigManager &configManager,
                                    NvsCredentialStore &readerDataManager)
     : m_server(nullptr), m_configManager(configManager),
-      m_readerDataManager(readerDataManager), m_mqttManager(nullptr), m_nfcManager(nullptr) {
+      m_readerDataManager(readerDataManager), m_mqttManager(nullptr), m_nfcManager(nullptr),
+      m_identityNames(nullptr), m_homeKitLock(nullptr) {
 }
 
 /**
@@ -505,6 +509,8 @@ void WebServerManager::setupRoutes() {
       {"/eth_get_config", HTTP_GET, handleGetEthConfig, this},
       {"/automation/schema", HTTP_GET, handleAutomationSchema, this},
       {"/nfc_get_presets", HTTP_GET, handleGetNfcPresets, this},
+      {"/identity_names", HTTP_GET, handleGetIdentityNames, this},
+      {"/identity_names", HTTP_POST, handleSaveIdentityNames, this},
 
       // Action endpoints
       {"/reboot_device", HTTP_POST, handleReboot, this},
@@ -793,8 +799,15 @@ esp_err_t WebServerManager::handleGetConfig(httpd_req_t *req) {
     JsonGuard issuersArray(cJSON_CreateArray());
     for (const auto &issuer : readerData.issuers) {
       JsonGuard issuerJson(cJSON_CreateObject());
-      cJSON_AddStringToObject(issuerJson.get(), "issuerId", fmt::format("{:02X}", fmt::join(issuer.id, "")).c_str());
-      
+      const std::string issuerId = fmt::format("{:02X}", fmt::join(issuer.id, ""));
+      cJSON_AddStringToObject(issuerJson.get(), "issuerId", issuerId.c_str());
+      if (instance->m_identityNames) {
+        const std::string name = instance->m_identityNames->issuerName(issuerId);
+        if (!name.empty()) {
+          cJSON_AddStringToObject(issuerJson.get(), "name", name.c_str());
+        }
+      }
+
       JsonGuard endpointsArray(cJSON_CreateArray());
       for (const auto &endpoint : issuer.endpoints) {
         JsonGuard ep(cJSON_CreateObject());
@@ -878,6 +891,74 @@ esp_err_t WebServerManager::handleAutomationSchema(httpd_req_t *req) {
   response.addItem("data", std::move(data).release());
   std::string resp = response.toStringUnformatted();
   httpd_resp_send(req, resp.c_str(), HTTPD_RESP_USE_STRLEN);
+  return ESP_OK;
+}
+
+esp_err_t WebServerManager::handleGetIdentityNames(httpd_req_t *req) {
+  WebServerManager *instance = getInstance(req);
+  if (!instance) {
+    httpd_resp_send_500(req);
+    return ESP_FAIL;
+  }
+  if (!instance->basicAuth(req)) {
+    return sendAuthFailure(req);
+  }
+  if (!instance->m_identityNames) {
+    return sendJsonError(req, "Identity names unavailable");
+  }
+
+  JsonGuard data(cJSON_Parse(instance->m_identityNames->serializeToJson().c_str()));
+  JsonGuard codeIds(cJSON_CreateArray());
+  if (instance->m_homeKitLock && instance->m_homeKitLock->accessCodeManager()) {
+    for (uint16_t id : instance->m_homeKitLock->accessCodeManager()->listCodeIds()) {
+      cJSON_AddItemToArray(codeIds.get(), cJSON_CreateNumber(id));
+    }
+  }
+  cJSON_AddItemToObject(data.get(), "codeIds", codeIds.release());
+
+  httpd_resp_set_type(req, "application/json");
+  std::string response = JsonBuilder::object()
+      .addBool("success", true)
+      .addItem("data", std::move(data))
+      .toStringUnformatted();
+  httpd_resp_send(req, response.c_str(), HTTPD_RESP_USE_STRLEN);
+  return ESP_OK;
+}
+
+esp_err_t WebServerManager::handleSaveIdentityNames(httpd_req_t *req) {
+  WebServerManager *instance = getInstance(req);
+  if (!instance) {
+    httpd_resp_send_500(req);
+    return ESP_FAIL;
+  }
+  if (!instance->basicAuth(req)) {
+    return sendAuthFailure(req);
+  }
+  if (!instance->m_identityNames) {
+    return sendJsonError(req, "Identity names unavailable");
+  }
+
+  if (req->content_len <= 0 || req->content_len > 4096) {
+    return sendJsonError(req, "Request body too large", "413 Payload Too Large");
+  }
+  std::string body(static_cast<size_t>(req->content_len), '\0');
+  int received = httpd_req_recv(req, body.data(), body.size());
+  if (received <= 0) {
+    return sendJsonError(req, "Failed to read request body");
+  }
+  body.resize(static_cast<size_t>(received));
+
+  if (!instance->m_identityNames->updateFromJson(body)) {
+    return sendJsonError(req, "Invalid identity names JSON");
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  std::string response = JsonBuilder::object()
+      .addBool("success", true)
+      .addString("message", "Identity names saved")
+      .addItem("data", JsonGuard(cJSON_Parse(instance->m_identityNames->serializeToJson().c_str())))
+      .toStringUnformatted();
+  httpd_resp_send(req, response.c_str(), HTTPD_RESP_USE_STRLEN);
   return ESP_OK;
 }
 

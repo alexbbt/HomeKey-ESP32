@@ -18,6 +18,8 @@ class NvsCredentialStore;
 class SystemManager;
 class MqttManager;
 class NfcManager;
+class IdentityNamesManager;
+class HomeKitLock;
 namespace loggable {
 class WebSocketLogSinker;
 }
@@ -70,6 +72,10 @@ public:
   bool basicAuth(httpd_req_t* req);
   void setMqttManager(MqttManager *mqttManager) { m_mqttManager = mqttManager; }
   void setNfcManager(NfcManager *nfcManager) { m_nfcManager = nfcManager; }
+  void setIdentityNamesManager(IdentityNamesManager *identityNames) {
+    m_identityNames = identityNames;
+  }
+  void setHomeKitLock(HomeKitLock *homeKitLock) { m_homeKitLock = homeKitLock; }
   void broadcastWs(const uint8_t *payload, size_t len, httpd_ws_type_t type);
   void setWSBackLogSize(const uint16_t size);
 
@@ -144,6 +150,8 @@ private:
   static esp_err_t handleCertificateUpload(httpd_req_t *req);
   static esp_err_t handleCertificateStatus(httpd_req_t *req);
   static esp_err_t handleCertificateDelete(httpd_req_t *req);
+  static esp_err_t handleGetIdentityNames(httpd_req_t *req);
+  static esp_err_t handleSaveIdentityNames(httpd_req_t *req);
 
   static void captivePortalSaveTask(void* pvParameters);
   static void captivePortalEthSaveTask(void* pvParameters);
@@ -202,6 +210,8 @@ private:
   NvsCredentialStore &m_readerDataManager;
   MqttManager *m_mqttManager;
   NfcManager *m_nfcManager;
+  IdentityNamesManager *m_identityNames{nullptr};
+  HomeKitLock *m_homeKitLock{nullptr};
 
   // WebSocket infrastructure
   QueueHandle_t m_wsQueue;
