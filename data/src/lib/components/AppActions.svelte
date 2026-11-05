@@ -13,12 +13,15 @@
   // svelte-ignore state_referenced_locally
   let actionsConfig = $state<ActionsConfig>({
     ...$state.snapshot(actions),
-    // Older firmware may omit idle color; default to solid blue online indicator.
+    // Older firmware may omit newer pixel fields; keep sensible defaults.
     neopixelIdleColor: actions?.neopixelIdleColor ?? [
       [0, 0],
       [1, 0],
       [2, 255],
     ],
+    neopixelKeypressDipEnabled: actions?.neopixelKeypressDipEnabled ?? true,
+    neopixelKeypressDipPercent: actions?.neopixelKeypressDipPercent ?? 50,
+    neopixelKeypressDipMs: actions?.neopixelKeypressDipMs ?? 120,
   });
 
   const saveActionsConfig = async (e: any): Promise<void> => {
@@ -180,7 +183,7 @@
                         style="background-color: rgb({actionsConfig.neopixelIdleColor?.[0]?.[1] ?? 0}, {actionsConfig.neopixelIdleColor?.[1]?.[1] ?? 0}, {actionsConfig.neopixelIdleColor?.[2]?.[1] ?? 0});"
                       ></div>
                     </legend>
-                    <p class="text-xs text-base-content/60 mb-3">Solid color while the device is idle. Feedback colors temporarily override this.</p>
+                    <p class="text-xs text-base-content/60 mb-3">Solid color while the device is idle. Feedback colors temporarily override this. Set RGB to 0 to disable the idle light.</p>
                     <div class="form-control">
                       <!-- svelte-ignore a11y_label_has_associated_control -->
                       <label class="label">
@@ -229,6 +232,50 @@
                             class="input input-bordered w-full"
                           />
                         </div>
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  <fieldset class="fieldset border-base-300 rounded-box border p-4 mb-6">
+                    <legend class="fieldset-legend">Keypress Dip</legend>
+                    <p class="text-xs text-base-content/60 mb-3">Briefly dims the idle light when a keypad key is registered.</p>
+                    <div class="form-control mb-4">
+                      <label class="label cursor-pointer justify-start gap-3">
+                        <input
+                          type="checkbox"
+                          class="toggle toggle-primary"
+                          bind:checked={actionsConfig.neopixelKeypressDipEnabled}
+                        />
+                        <span class="label-text text-sm">Enable keypress dip</span>
+                      </label>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="form-control">
+                        <!-- svelte-ignore a11y_label_has_associated_control -->
+                        <label class="label">
+                          <span class="label-text text-sm">Dip brightness (%)</span>
+                        </label>
+                        <input
+                          type="number"
+                          bind:value={actionsConfig.neopixelKeypressDipPercent}
+                          placeholder="50"
+                          min="1"
+                          max="100"
+                          class="input input-bordered w-full"
+                        />
+                      </div>
+                      <div class="form-control">
+                        <!-- svelte-ignore a11y_label_has_associated_control -->
+                        <label class="label">
+                          <span class="label-text text-sm">Dip duration (ms)</span>
+                        </label>
+                        <input
+                          type="number"
+                          bind:value={actionsConfig.neopixelKeypressDipMs}
+                          placeholder="120"
+                          min="1"
+                          class="input input-bordered w-full"
+                        />
                       </div>
                     </div>
                   </fieldset>

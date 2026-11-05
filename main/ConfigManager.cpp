@@ -135,7 +135,7 @@ const ConfigManager::ConfigField ConfigManager::kConfigFields[ConfigManager::kFi
   F("misc", misc_config_t, keypadMinCodeLength, U8),
   F("misc", misc_config_t, keypadMaxCodeLength, U8),
   F("misc", misc_config_t, keypadMaxCodes, U8),
-  // --- actions (31) ---
+  // --- actions (34) ---
   F("actions", actions_config_t, nfcNeopixelPin, U8),
   F("actions", actions_config_t, neoPixelType, U8),
   F("actions", actions_config_t, neopixelSuccessColor, ColorMap),
@@ -145,6 +145,9 @@ const ConfigManager::ConfigField ConfigManager::kConfigFields[ConfigManager::kFi
   F("actions", actions_config_t, neopixelTagEventTime, U16),
   F("actions", actions_config_t, neopixelTagEventColor, ColorMap),
   F("actions", actions_config_t, neopixelIdleColor, ColorMap),
+  F("actions", actions_config_t, neopixelKeypressDipEnabled, Bool),
+  F("actions", actions_config_t, neopixelKeypressDipPercent, U8),
+  F("actions", actions_config_t, neopixelKeypressDipMs, U16),
   F("actions", actions_config_t, nfcSuccessPin, U8),
   F("actions", actions_config_t, nfcSuccessTime, U16),
   F("actions", actions_config_t, nfcSuccessHL, Bool),

@@ -11,12 +11,27 @@ export interface HKInfo {
   issuers: Array<{
     /** Unique identifier for the issuer */
     issuerId: string;
+    /** Optional display / MQTT operator name */
+    name?: string;
     /** Array of endpoints for this issuer */
     endpoints: Array<{
       /** Unique identifier for the endpoint */
       endpointId: string;
     }>;
   }>;
+}
+
+/**
+ * Local display names for Home Key issuers and HAP access codes.
+ * Sent as MQTT `operator` on successful auth when set.
+ */
+export interface IdentityNames {
+  /** issuerId hex → person name */
+  issuers: Record<string, string>;
+  /** accessCodeId string → person name */
+  codes: Record<string, string>;
+  /** Known access-code ids on this lock (PIN digits are never included) */
+  codeIds: number[];
 }
 
 /**
@@ -232,6 +247,12 @@ export interface ActionsConfig {
   neopixelTagEventColor: [number, number][];
   /** RGB color values for idle / online indicator */
   neopixelIdleColor: [number, number][];
+  /** Briefly dim idle NeoPixel when a keypad key is pressed */
+  neopixelKeypressDipEnabled: boolean;
+  /** Idle brightness percent during keypress dip (1-100) */
+  neopixelKeypressDipPercent: number;
+  /** Keypress dip duration in milliseconds */
+  neopixelKeypressDipMs: number;
   /** GPIO pin for NFC success indicator */
   nfcSuccessPin: number;
   /** Duration in milliseconds for NFC success signal */

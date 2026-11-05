@@ -641,7 +641,7 @@ bool HardwareManager::authPixelFeedbackActive() const {
 }
 
 void HardwareManager::showKeypressDip() {
-    if (m_pixel == nullptr || authPixelFeedbackActive()) {
+    if (!m_miscConfig.neopixelKeypressDipEnabled || m_pixel == nullptr || authPixelFeedbackActive()) {
         return;
     }
     auto color = m_miscConfig.neopixelIdleColor;
@@ -651,7 +651,12 @@ void HardwareManager::showKeypressDip() {
     if (r == 0 && g == 0 && b == 0) {
         return;
     }
-    constexpr uint8_t pct = NEOPIXEL_KEYPRESS_DIP_PERCENT;
+    uint8_t pct = m_miscConfig.neopixelKeypressDipPercent;
+    if (pct < 1) {
+        pct = 1;
+    } else if (pct > 100) {
+        pct = 100;
+    }
     m_pixel->set(m_pixel->RGB(
         static_cast<uint8_t>((r * pct) / 100),
         static_cast<uint8_t>((g * pct) / 100),
@@ -660,7 +665,8 @@ void HardwareManager::showKeypressDip() {
         if (esp_timer_is_active(m_pixelKeypressTimer)) {
             esp_timer_stop(m_pixelKeypressTimer);
         }
-        esp_timer_start_once(m_pixelKeypressTimer, NEOPIXEL_KEYPRESS_DIP_MS * 1000);
+        const uint16_t dip_ms = m_miscConfig.neopixelKeypressDipMs == 0 ? 1 : m_miscConfig.neopixelKeypressDipMs;
+        esp_timer_start_once(m_pixelKeypressTimer, static_cast<uint64_t>(dip_ms) * 1000);
     }
 }
 
